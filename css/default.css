@@ -12,6 +12,11 @@ html, body {
 	-webkit-user-select: none;
 }
 
+#container {
+	width: 500px;
+	height: 100px;
+}
+
 #info {
 	position: fixed;
 	top: 5px;

@@ -199,6 +199,10 @@ function onMouseWheel(event) {
 }
 
 function onWindowResize(event) {
+  if (!renderer) {
+    return;
+  }
+
   windowIsBeingResized = true;
 
   // the following change to document.body.clientWidth and Height works better for mobile, especially iOS
@@ -398,7 +402,8 @@ function init() {
   // load a resource
   blueNoiseTexture = textureLoader.load(
     // resource URL
-    'textures/BlueNoise_RGBA256.png',
+    // 'textures/BlueNoise_RGBA256.png',
+    BlueNoise_RGBA256,
 
     // onLoad callback
     function (texture) {

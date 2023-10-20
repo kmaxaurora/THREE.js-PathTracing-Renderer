@@ -1,3 +1,8 @@
+// Terrain variables
+let waterLevel = 400;
+let cameraUnderWater = 0.0;
+let PerlinNoiseTexture;
+
 // scene/demo-specific variables go here
 
 // Rendering variables
@@ -9,8 +14,8 @@ let hdrTexture,
   hdrExposure = 1.0;
 
 // Environment variables
-let skyLightIntensity = 2.0,
-  sunLightIntensity = 2.0,
+let skyLightIntensity = 1.0,
+  sunLightIntensity = 1.0,
   sunColor = [1.0, 0.98, 0.92];
 let sunAngle = Math.PI / 2.5;
 
@@ -21,6 +26,11 @@ let pathTracingMaterialList = [];
 let uniqueMaterialTextures = [];
 let aabb_array;
 
+const MODEL_SCALE = 6.0;
+const MODEL_HEIGHT = 40.0;
+const MODEL_X = -10.0;
+const MODEL_Z = -80.0;
+
 // Constants
 const loadingSpinner = document.querySelector('#loadingSpinner');
 
@@ -28,25 +38,51 @@ const loadingSpinner = document.querySelector('#loadingSpinner');
 // Model setup //
 /////////////////
 let modelPaths = [
-  'models/00_001_011.gltf',
-  'models/00_002_003.gltf',
-  'models/00_003_000.gltf',
-  'models/00_004_003.gltf',
-  'models/00_005_025.gltf',
-  'models/00_006_004.gltf',
-  'models/00_007_003.gltf',
-  'models/00_008_004.gltf',
-  'models/00_009_008.gltf',
-  'models/00_010_013.gltf',
-  'models/00_011_013.gltf',
-  'models/00_012_001.gltf',
-  'models/00_013_003.gltf',
-  'models/00_014_004.gltf',
-  'models/00_015_004.gltf',
-  'models/00_017_001.gltf',
-  'models/00_019_001.gltf',
-  'models/00_020_002.gltf',
-  'models/00_standard.gltf',
+  //   'models/00_001_011.gltf',
+  //   'models/00_002_003.gltf',
+  //   'models/00_003_000.gltf',
+  //   'models/00_004_003.gltf',
+  //   'models/00_005_025.gltf',
+  //   'models/00_006_004.gltf',
+  //   'models/00_007_003.gltf',
+  //   'models/00_008_004.gltf',
+  //   'models/00_009_008.gltf',
+  //   'models/00_010_013.gltf',
+  //   'models/00_011_013.gltf',
+  //   'models/00_012_001.gltf',
+  //   'models/00_013_003.gltf',
+  //   'models/00_014_004.gltf',
+  //   'models/00_015_004.gltf',
+  //   'models/00_017_001.gltf',
+  //   'models/00_019_001.gltf',
+  //   'models/00_020_002.gltf',
+  //   'models/00_standard.gltf',
+  //   'models/DamagedHelmet.gltf',
+  //   'models/scene.gltf',
+  // 'models/scene (1).gltf',//lidar
+  // 'models/scene (2).gltf',
+  // 'models/scene (3).gltf',
+  // 'models/scene (4).gltf',
+  // 'models/scene (5).gltf',
+  // 'models/scene (6).gltf',
+  // 'models/scene (7).gltf',
+  // 'models/scene (8).gltf',
+
+  // 'models/scene (9).gltf',
+  // 'models/scene (10).gltf',
+  // 'models/scene (11).gltf',
+  // 'models/scene (12).gltf',
+
+  // 'models/scene (13).gltf',
+  // 'models/scene (14).gltf',
+  'models/scene (15).gltf',
+  'models/scene (16).gltf',
+  'models/scene (17).gltf',
+  'models/scene (18).gltf',
+  'models/scene (19).gltf',
+  'models/scene (20).gltf',
+  'models/scene (21).gltf',
+  // 'models/scene (22).gltf',
 ];
 
 // Model/scene variables
@@ -76,13 +112,13 @@ function init_GUI() {
     hdrExposure: 1.0,
   };
   skyLight_IntensityObject = {
-    skyLightIntensity: 2.0,
+    skyLightIntensity: 1.0,
   };
   sun_AngleObject = {
     sunAngle: Math.PI / 2.5,
   };
   sunLight_IntensityObject = {
-    sunLightIntensity: 2.0,
+    sunLightIntensity: 1.0,
   };
   sun_ColorObject = {
     sunColor: [1.0, 0.98, 0.92],
@@ -205,7 +241,23 @@ function loadModels(modelPaths) {
         // Prepare geometry for path tracing
         prepareGeometryForPT(flattenedMeshList, pathTracingMaterialList, triangleMaterialMarkers);
 
-        init();
+        PerlinNoiseTexture = textureLoader.load(
+          // resource URL
+          'textures/perlin256.png',
+
+          // onLoad callback
+          function (texture) {
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.flipY = false;
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.generateMipmaps = false;
+
+            // now that the texture has been loaded, we can init
+            init();
+          },
+        );
 
         // Hide loading spinning and show menu
         loadingSpinner.classList.add('hidden');
@@ -216,9 +268,16 @@ function loadModels(modelPaths) {
 } // end function loadModels(modelPaths)
 
 function prepareGeometryForPT(meshList, pathTracingMaterialList, triangleMaterialMarkers) {
+  if (meshList.length === 0) {
+    console.error('No meshes found in model.');
+    return;
+  }
   // Gather all geometry from the mesh list that now contains loaded models
   let geoList = [];
   for (let i = 0; i < meshList.length; i++) geoList.push(meshList[i].geometry);
+  console.log(geoList[0]);
+  // lidar
+  // geoList[0].translate(0, 0, -1);
 
   // Merge geometry from all models into one new mesh
   let modelMesh = new THREE.Mesh(mergeGeometries(geoList));
@@ -280,9 +339,34 @@ function prepareGeometryForPT(meshList, pathTracingMaterialList, triangleMateria
   var triangle_b_box_max = new THREE.Vector3();
   var triangle_b_box_centroid = new THREE.Vector3();
 
-  var vpa = new Float32Array(modelMesh.geometry.attributes.position.array);
-  if (modelMesh.geometry.attributes.normal === undefined) modelMesh.geometry.computeVertexNormals();
-  var vna = new Float32Array(modelMesh.geometry.attributes.normal.array);
+  const gpa = modelMesh.geometry.attributes.position.array;
+  console.log(gpa.length);
+  for (let i = 0; i < gpa.length; i += 3) {
+    [gpa[i + 1], gpa[i + 2]] = [-gpa[i + 2], gpa[i + 1]];
+    gpa[i + 0] *= MODEL_SCALE;
+    gpa[i + 1] *= MODEL_SCALE;
+    gpa[i + 2] *= MODEL_SCALE;
+    gpa[i + 0] += MODEL_X;
+    gpa[i + 1] += MODEL_HEIGHT; // up
+    gpa[i + 2] += MODEL_Z;
+  }
+  // cameraControlsObject.position.set(60, 20, -300);
+  // cameraControlsObject.position.set(-837, 1350, 2156);
+
+  var vpa = new Float32Array(gpa);
+
+  const hasNormal = !!modelMesh.geometry.attributes.normal;
+  //   if (!hasNormal) {
+  modelMesh.geometry.computeVertexNormals();
+  //   }
+  const gna = modelMesh.geometry.attributes.normal.array;
+  //   if (hasNormal) {
+  //     for (let i = 0; i < gna.length; i += 3) {
+  //       [gna[i + 1], gna[i + 2]] = [gna[i + 2], gna[i + 1]];
+  //     }
+  //   }
+
+  var vna = new Float32Array(gna);
 
   var modelHasUVs = false;
   if (modelMesh.geometry.attributes.uv !== undefined) {
@@ -457,28 +541,39 @@ function initSceneData() {
   demoFragmentShaderFileName = 'Gltf_Viewer.glsl';
 
   // scene/demo-specific three.js objects setup goes here
-  sceneIsDynamic = false;
+  // sceneIsDynamic = false;
+  sceneIsDynamic = true;
 
-  cameraFlightSpeed = 60;
+  cameraFlightSpeed = 560;
 
   // pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
   pixelRatio = mouseControl ? 0.5 : 0.5; // less demanding on battery-powered mobile devices
+  pixel_ResolutionObject.pixel_Resolution = 1.0;
 
-  EPS_intersect = 0.001;
+  // EPS_intersect = 0.001;
+  EPS_intersect = 0.1;
 
   // set camera's field of view
   worldCamera.fov = 60;
-  focusDistance = 100.0;
+  // focusDistance = 200.0;
+  focusDistance = 3000.0;
+  apertureChangeSpeed = 500;
 
   // position and orient camera
-  cameraControlsObject.position.set(-100, 120, 0);
-  // turn right
-  cameraControlsPitchObject.rotation.x = -0.95;
-  // look downward
-  cameraControlsYawObject.rotation.y = Math.PI / -1.333;
+  // cameraControlsObject.position.set(60, 20, -300);
+  // cameraControlsPitchObject.rotation.x = 0.1;// turn right
+  // cameraControlsYawObject.rotation.y = 3;  // look downward
+  cameraControlsObject.position.set(-1837, 1350, 1556);
+  cameraControlsYawObject.rotation.y = -0.7;
+  cameraControlsPitchObject.rotation.x = -0.3;
 
   // add this demo's custom menu items to the GUI
   init_GUI();
+
+  // terrain uniforms
+  pathTracingUniforms.t_PerlinNoise = { value: PerlinNoiseTexture };
+  pathTracingUniforms.uCameraUnderWater = { value: 0.0 };
+  pathTracingUniforms.uWaterLevel = { value: 0.0 };
 
   // scene/demo-specific uniforms go here
   pathTracingUniforms.tTriangleTexture = { value: triangleDataTexture };
@@ -513,14 +608,26 @@ function updateVariablesAndUniforms() {
     skyLightIntensityChanged = false;
   }
 
-  if (sunAngleChanged) {
-    sunAngle = sun_AngleController.getValue();
-    sunDirection.set(Math.cos(sunAngle) * 1.2, Math.sin(sunAngle), -Math.cos(sunAngle) * 3.0);
-    sunDirection.normalize();
-    pathTracingUniforms.uSunDirection.value.copy(sunDirection);
-    cameraIsMoving = true;
-    sunAngleChanged = false;
-  }
+  // Terrain variables
+  sunAngle = ((elapsedTime * 3 * 0.035) % (Math.PI + 0.2)) - 0.11;
+  sunDirection.set(Math.cos(sunAngle), Math.sin(sunAngle), -Math.cos(sunAngle) * 2.0);
+  sunDirection.normalize();
+
+  if (cameraControlsObject.position.y < waterLevel) cameraUnderWater = 1.0;
+  else cameraUnderWater = 0.0;
+
+  pathTracingUniforms.uCameraUnderWater.value = cameraUnderWater;
+  pathTracingUniforms.uWaterLevel.value = waterLevel;
+  pathTracingUniforms.uSunDirection.value.copy(sunDirection);
+
+  // if (sunAngleChanged) {
+  //   sunAngle = sun_AngleController.getValue();
+  //   sunDirection.set(Math.cos(sunAngle) * 1.2, Math.sin(sunAngle), -Math.cos(sunAngle) * 3.0);
+  //   sunDirection.normalize();
+  //   pathTracingUniforms.uSunDirection.value.copy(sunDirection);
+  //   cameraIsMoving = true;
+  //   sunAngleChanged = false;
+  // }
 
   if (sunLightIntensityChanged) {
     pathTracingUniforms.uSunLightIntensity.value = sunLight_IntensityController.getValue();

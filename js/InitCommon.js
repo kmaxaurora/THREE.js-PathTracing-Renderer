@@ -294,7 +294,7 @@ function init() {
   // default GUI elements for all demos
 
   pixel_ResolutionObject = {
-    pixel_Resolution: 0.5, // will be set by each demo's js file
+    pixel_Resolution: 1.0, // will be set by each demo's js file
   };
   orthographicCamera_ToggleObject = {
     Orthographic_Camera: false,
@@ -519,7 +519,7 @@ function initTHREEjs() {
   // setup scene/demo-specific objects, variables, GUI elements, and data
   initSceneData();
 
-  pixel_ResolutionController.setValue(pixelRatio);
+  pixel_ResolutionController.setValue(pixel_ResolutionObject.pixel_Resolution);
   if (!allowOrthographicCamera && !mouseControl) {
     orthographicCamera_ToggleController.domElement.hidden = true;
     orthographicCamera_ToggleController.domElement.remove();
